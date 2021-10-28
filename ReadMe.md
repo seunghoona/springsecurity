@@ -227,3 +227,63 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 3. 인증을 받지 못한 사용자는 `익명 사용자`로 분류되어, `익명 사용자` 인증 토큰이(인증 객체) 익명 사용자 관리 명목으로 생성되지만, 로그인과 관련된 접근 권한은 없다(세션 생성이 되지않음) -> `redirect /login page`
 
 4. `익명 사용자` 전용으로 발급된 인증토큰을 통해, 향후 `익명 사용자` 접근 여부를 관리 할 수 있다
+
+
+## 5. 동시세션 제어 
+1. 최대 허용 개수(1개)를 사용자가 초과한경우 
+   + 이전 사용자 세션만료 
+     + 사용자1 로그인 -> 사용자 세션생성 
+     + 사용자2 로그인 -> 세션 생성 사용자1세션 만료 
+     + 사용자1은 세션 만료로 인하여 조회 불가능 
+   + 현재 사용자 인증 실패 
+     + 사용자1 로그인 -> 사용자1 세션생성 
+     + 사용자2 로그인 -> 사용자1이 가지고 있기 때문에 사용자2는 예외발생
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .sessionManagement()
+                .maximumSessions("최대 허용 가능 세션수 , -1인경우 무제한 로그인세션허용")
+                .maxSessionsPreventsLogin("동시로그인 차단, false : 기존세션 만료, true : 예외던짐")
+                .expiredUrl("세션이 만료된 경우 이동할 페이지")
+        ;
+    }
+}
+```
+
+### 5.세션 고정보호
+1. 공격자가 서버로 공격을 시도합니다.
+2. 공격자에 의한 세션정보를 사용자에게 쿠키를 심어 놓습니다.
+3. 사용자는 공격자가 가진 세션 쿠키를 가지고 로그인을 시도하면 인증에 성공하게되며 
+4. 사용자의 세션정보를 공격자도 동일하게 공유하게 됩니다.
+
+#### 위와 같은 공격을 방어를 해야합니다. 
+어떻게 방어를 해야할까요 ? 
+1. 사용자가 인증을 할 때마다 새로운 세션이 생성되도록 처리하면됩니다.
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .sessionManagement()
+                .sessionFixation().changeSessionId(); // 기본값 {
+        // none,
+        // changeSessionId servlet 3.1 이상 이전 세션값 사용
+        // migrateSession, servlet 3.1 이하 이전 세션값 사용
+        // newSession 이전의 세션값을 사용하지 못함
+        // }
+        ;
+    }
+}
+
+```
+
+

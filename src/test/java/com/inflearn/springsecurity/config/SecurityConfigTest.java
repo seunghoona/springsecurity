@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.ResultMatcher;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpSession;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.logout;
@@ -103,7 +104,5 @@ class SecurityConfigTest {
                         .cookie(remember))
                 .andExpect(unauthenticated());
     }
-
-
 
 }
