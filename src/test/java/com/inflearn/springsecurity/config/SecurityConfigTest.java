@@ -7,14 +7,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.ResultMatcher;
+
+import javax.servlet.http.Cookie;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.logout;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,5 +68,42 @@ class SecurityConfigTest {
                 .andExpect(redirectedUrl("/login"))
         ;
     }
+
+    @Test
+    @DisplayName("리멤버 미 test")
+    void rememberMeTest() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(formLogin()
+                        .loginProcessingUrl("/login-proc")
+                        .user("userId", "user")
+                        .password("passwd", "1234")
+
+                )
+                .andReturn();
+        Cookie remember = mvcResult.getResponse().getCookie("remember-me");
+
+        this.mockMvc.perform(get("/")
+                        .cookie(remember))
+                .andDo(print())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("로그인 실패시 리멤버 미 실패 ")
+    void rememberMeNotWorkTest() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(formLogin()
+                        .loginProcessingUrl("/login-proc")
+                        .user("userId", "user")
+                        .password("passwd", "1223234")
+
+                )
+                .andReturn();
+        Cookie remember = mvcResult.getResponse().getCookie("remember-me");
+
+        this.mockMvc.perform(get("/")
+                        .cookie(remember))
+                .andExpect(unauthenticated());
+    }
+
+
 
 }

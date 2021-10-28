@@ -111,7 +111,7 @@ public abstract class AbstractAuthenticationProcessingFilter {
 7. SecurityContext에 저장 
 8. SuccessHandler();
 
-## 로그아웃 처리 LogoutFilter
+## 2.로그아웃 처리 LogoutFilter
 
 ```java
 
@@ -151,3 +151,57 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 3. SecurityContextLogoutHandler // 세션삭제
 4. LogoutSuccessEventPublishingLogoutHandler
     + 우리가 만든 핸들러를 호출한다.
+
+## 3. Remember ME 인증 및 RememberMeAuthenticationFilter
+> 세션이 만료되고 웹 브라우저가 종료된 후에도 어플리케이션이 사용자를 기억하는 기능    
+> Remember-me 쿠키에 대한 http요청을 확인한 후 토큰 기반 인증을 사용해 유효성을 검사하고 토큰이 검증되면 사용자는 로그인된다.
+
+### 설정방법 
+
+```java
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .rememberMe()
+                .rememberMeParameter("기본파라미터 명은 remember-me")
+                .tokenValiditySeconds("기본 값은 14일")
+                .alwaysRemember("리멤버미 기능이 활성화되지 않아도 항상실행")
+                .userDetailsService("userDetailsService")
+        ;
+    }
+}
+```
+
+### Remember-me flow
+1. 사용자의 요청을 하지만 세션이 만료된 상태에서 요청을 합니다.
+   + 사용자는 remember-me를 통해 로그인을 시도했습니다.
+2. RememberMeAuthenticationFilter
+   1. 아래와 같은 경우 작동하게 됩니다.
+      1. Authentication null 
+         + 사용자의 세션이 만료
+         + SecurityContext  Authentication 없는경우
+         + Null이 아닌경우는 해당 정보가 존재하는 것으로 판단하여 작동하지 않습니다.
+      2. form 인증 rememer-me 쿠키를 발급 받아서 전송하는 경우
+3. RememberMeService
+   1. TokenBeasedRememberMeService
+      + 14일 만료기간 
+   2. PersistentTokenBasedRememberMeService
+      + db에 저장 
+4. Token Cookie 를 추출 
+5. Token 존재한다면 
+   + 존재하지 않는다면 
+     + chain.doFilter(다음필터를 실행)
+6. DecodeToken(정상유무 판단) 규칙체크 
+   1. 조건에 부합하지 않는다면 Exception 발생
+      1. Token 이 서로 일치하는가? 
+      2. User 계정이 존재하는가? 
+      3. 새로운 Authentication 생성 
+      4. AuthenticationManager 인증처리
+      
+   
+   

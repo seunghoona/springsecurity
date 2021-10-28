@@ -1,15 +1,24 @@
 package com.inflearn.springsecurity.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 import javax.servlet.http.HttpSession;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    final UserDetailsService userDetailsService;
+
+    public SecurityConfig(UserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -31,9 +40,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     System.out.println("exception" + exception.getMessage());
                     response.sendRedirect("/login");
                 })
+                .permitAll()
 
-        ;
-        http
+        .and()
                 .logout()
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login")
@@ -45,6 +54,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.sendRedirect("/login");
                 })
-                .permitAll();
+
+
+        .and()
+                .rememberMe()
+                .rememberMeParameter("remember")
+                .tokenValiditySeconds(3600)
+                .alwaysRemember(true)
+                .userDetailsService(userDetailsService)
+                ;
     }
 }
