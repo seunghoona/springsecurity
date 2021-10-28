@@ -5,6 +5,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 
+import javax.servlet.http.HttpSession;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
@@ -29,7 +31,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     System.out.println("exception" + exception.getMessage());
                     response.sendRedirect("/login");
                 })
+
+        ;
+        http
+                .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/login")
+                .deleteCookies("remember-me")
+                .addLogoutHandler((request, response, authentication) -> {
+                    HttpSession session = request.getSession();
+                    session.invalidate();
+                })
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    response.sendRedirect("/login");
+                })
                 .permitAll();
-                ;
     }
 }

@@ -1,5 +1,6 @@
 package com.inflearn.springsecurity.config;
 
+import com.inflearn.springsecurity.SecurityController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,8 +9,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.logout;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -17,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(SpringExtension.class)
 @AutoConfigureMockMvc
-@WebMvcTest
+@WebMvcTest(SecurityController.class)
 class SecurityConfigTest {
 
     @Autowired
@@ -46,6 +49,16 @@ class SecurityConfigTest {
                 .andExpect(unauthenticated())
                 .andExpect(redirectedUrl("/login"))
                 .andExpect(status().is3xxRedirection())
+        ;
+    }
+
+    @Test
+    @DisplayName("로그아웃 테스트")
+    void logoutTest() throws Exception {
+        mockMvc.perform(logout()
+                        .logoutUrl("/logout")
+                        )
+                .andExpect(redirectedUrl("/login"))
         ;
     }
 

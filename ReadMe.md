@@ -111,3 +111,43 @@ public abstract class AbstractAuthenticationProcessingFilter {
 7. SecurityContext에 저장 
 8. SuccessHandler();
 
+## 로그아웃 처리 LogoutFilter
+
+```java
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .logout()
+                .logoutUrl("로그아웃 처리 url")
+                .logoutSuccessUrl("/login")
+                .deleteCookies("로그아웃 후 쿠키 삭제")
+                .addLogoutHandler("로그아웃핸들러")
+                .logoutSuccessHandler("로그아웃 성공후 핸들러")
+        ;
+    }
+}
+```
+### Logout flow
+1. 사용자가 logout 요청
+2. AntPathRequestMatcher(/logout)
+    + 매칭이 안 된 경우
+        + chain.doFilter(다음필터를 실행)
+    + 매칭이 된경우 
+3. Authentication 가 인증된 객체정보를 securityContext에서 가져온다.
+4. SecurityContextLogoutHandler
+    + 세션무효화
+    + 쿠키삭제
+    + SecurityContextHolder.clearContext()를 호출해서 저장된정도 삭제한다.
+5. SimpleUrlLogoutSuccessHandler로 로그인페이지로 이동
+
+### LogoutFilter 기본 Handler
+1. CookieCleaningLogoutHandler // 쿠키삭제
+2. CsrfLogoutHandler
+3. SecurityContextLogoutHandler // 세션삭제
+4. LogoutSuccessEventPublishingLogoutHandler
+    + 우리가 만든 핸들러를 호출한다.
