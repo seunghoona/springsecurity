@@ -203,5 +203,27 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
       3. 새로운 Authentication 생성 
       4. AuthenticationManager 인증처리
       
-   
-   
+## 4.익명사용자 AnonymousAuthenticationFilter
+
+> 익명사용자 인증 필터   
+> 익명사용자와 인증사용자를 구분해서 처리하기 위한 용도로 사용   
+> 화면에서 인증여부를 구현할 때 isAnonymous()와 isAuthenticated()로 구분해서 사용    
+> 인증 객체를 세션에 저장하지 않는다.
+
+1. 사용자가 요청을 보냄 
+2. AnonymousAuthenticationFilter
+   + Authentication 가 존재하지 않는다면 (인증하지 않은 사용자)
+     + AnonymousAuthenticationToken을 생성
+   + 인증한 사용자라면 
+     + chain.doFilter(다음필터를 실행)
+3. SecurityContextHolder에 익명객체를 저장처리
+
+### 정리
+
+1. 인증이 되기 전이나, 이후 의 사용자 모두 유효한 인증토큰을 갖고있지 못하면 `익명 사용자`이다
+
+2. `익명 사용자`는 로그인이 가능한 경로를 통해 인증허가를 을 받게 될 경우, 일반 사용자로 등극하여, 로그인 접속 및 향후 접속유지가 가능하게된다.
+
+3. 인증을 받지 못한 사용자는 `익명 사용자`로 분류되어, `익명 사용자` 인증 토큰이(인증 객체) 익명 사용자 관리 명목으로 생성되지만, 로그인과 관련된 접근 권한은 없다(세션 생성이 되지않음) -> `redirect /login page`
+
+4. `익명 사용자` 전용으로 발급된 인증토큰을 통해, 향후 `익명 사용자` 접근 여부를 관리 할 수 있다
