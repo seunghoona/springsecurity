@@ -3,3 +3,9 @@ spring:
     user:
       name: user
       password: 1234
+
+
+logging:
+  level:
+    root : debug
+    com.inflearn.springsecurity: debug
