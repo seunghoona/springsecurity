@@ -478,3 +478,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
+## CSRF, CsrfFilter
+1. `사용자`가 쇼핑몰로 로그인함으로써 쿠키를 받습니다. `http://shop.naver.com`
+2. `공격자`가 사용자에게 링크를 이용자에게 전달하게 됩니다. `http://shop.naver.com/adress=공격자집주소`
+3. `사용자`는 링크를 클릭함으로써 사용자의 승인이나 인지 없이 배송지가 등록된다.
+4. 위 문제를 해결하기 위해서 `CsrfFilter` 이용할 수 있다.
+
+## CsrfFilter 무엇인가
++ 모든 요청에 래덤하게 생성된 토큰을 HTTP 파라미터로 요구 
++ 요청시 전달되는 토큰값과 서버에 저장된 실제 값과 비교한 후 만약 일치하지 않으면 요청은 실패한다.
+  + HTTP  메소드 `PATCH,POST,PUT,DELETE`로 요청하는 경우 `토큰`값과 `토큰파라미터이름`을 가지고서 요청해야합니다.
++ 
