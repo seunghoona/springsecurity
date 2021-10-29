@@ -310,3 +310,50 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 }
 
 ```
+
+
+### SessionManagementFilter
+1. 세션관리
+   + 인증시 사용자의 세션정보를 등록 조회 삭제 등의 세션 이력을관리
+2. 동시적 세션제어 
+   + 동일 계정으로 접속이 허용되는 최대 세션 수를 제한
+3. 세션고정보호
+   + 인증할 때마다 세션쿠키를 새로발급하여 공격자의 쿠키조작을방지
+4. 세션생성정책
+   + Always, IF_Required,Never,Stateless
+
+###  ConcurrentSessionFilter
+
++ 매 요청마다 현재 사용자의 세션 만료 여부 체크
++ 세션이 만료되었을 경우 즉시 만료처리 
++ session.isExpired () == true
+  + 로그아웃
+  + 즉시 오류페이지 응답
+
+### flow
+1. `사용자1` 로그인 요청 
+2. `UsernamePasswordAuthenticationFilter`가 `ConcurrentSessionControlAuthenticationStrategy`를 호출합니다.
+   + ConcurrentSessionControlAuthenticationStrategy
+     + 동시성 세션을 처리하는 클래스 
+     + 인증을 시도하는 `사용자1`의 session 수가 몇 개인지 확인을 한다.
+   + ChangeSessionIdAuthenticationStrategy
+     + 세션고정보호를 처리하는 클래스 
+     + `사용자1`이 인증시도할 때는 새로운 session와 쿠키를 발급합니다.
+   + RegisterSessionAuthenticationStrategy
+     + 사용자의 세션의 정보를 저장하는 클래스 
+     + 사용자 세션정보의 수가 1로 증가하게 된다.
+3. `사용자2` 로그인 요청
+   + ConcurrentSessionControlAuthenticationStrategy
+     + sessionCount == maxSession 수가 같은경우
+       + 인증실패 전략인 경우
+         + SessionAuthenticationException
+       + 세션 만료 전략인 경우
+         + session.expireNow();
+         + ChangeSessionIdAuthenticationStrategy 클래스
+           + session.changeSessionId();
+         + RegisterSessionAuthenticationStrategy 클래스 
+           + 세션정보등록
+4. `사용자1`이 다시 요청하는경우 
+   + ConcurrentSessionsFilter는 매요청마다 확인 
+     + session.isExpired 로 확인 `ConcurrentSessionControlAuthenticationStrategy`에게 확인
+   + logout & 메시지 전송
