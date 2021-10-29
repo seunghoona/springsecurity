@@ -286,4 +286,27 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 ```
 
+### 5. 세션정책
++ SessionCreationPolicy.IF_REQUIRED (기본값)
++ 스프링시큐리티가 항상세션생성
+  + SessionCreationPolicy.Always
++ 스프링 시큐리티가 생성하지 않지만 이미 존재하면 사용
+  + SessionCreationPolicy.Never
++ 스프링 시큐리티가 생성하지 않고 존재해도 사용하지 않음
+  + SessionCreationPolicy.Stateless
+    + + jwt에서 사용
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+        ;
+    }
+}
+
+```
