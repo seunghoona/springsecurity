@@ -65,7 +65,7 @@ class SecurityConfigTest {
     void logoutTest() throws Exception {
         mockMvc.perform(logout()
                         .logoutUrl("/logout")
-                        )
+                )
                 .andExpect(redirectedUrl("/login"))
         ;
     }
@@ -104,5 +104,4 @@ class SecurityConfigTest {
                         .cookie(remember))
                 .andExpect(unauthenticated());
     }
-
 }

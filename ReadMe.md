@@ -357,3 +357,46 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
    + ConcurrentSessionsFilter는 매요청마다 확인 
      + session.isExpired 로 확인 `ConcurrentSessionControlAuthenticationStrategy`에게 확인
    + logout & 메시지 전송
+
+
+## 6. 권한 설정 및 표현식
+설정시 구체적인 경로가 먼저오고 그것보다 큰 범위의 경로가 뒤에 오도록해야한다. 
+
+1. antMatchers 
+   + 경로설정 
+2. hasRole 
+   + 해당 권한을 가졌는가? 
+3. access
+   + 조금 더 구체적인 표현식을 통해 처리할 수있다.
+   ```java
+    http.antMatchers("/**").access("hasRole('ADMIN') or hasRole('SYS')")
+    ```
+
+|메소드|동작|
+|:---:|:---:|
+|hasRole()|사용자가 주어진 `역할`이 있다면 접근을 허용|
+|hasAuthority()| 사용자가 주어진 `권한`이 있따면 접근허용|
+|hasAnyRole()| 사용자가 주어진 `역할`이 있다면|
+|hasAnyAuthority| 사용자가 주언진 `권한`중 어떤 것이라도 있다면 접근|
+|hasIpAddress | 주어진 IP로부터 요청이 왔다면 접근을 허용 |
+
+
+### 인메모리 사용자 생성 방법 
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.inMemoryAuthentication().withUser("user").password("{noop}1234").roles("USER")
+                .and()
+                .withUser("sys").password("{noop}1234").roles("SYS")
+                .and()
+                .withUser("admin").password("{noop}1234").roles("ADMIN");
+    }
+}
+```
+   
+
