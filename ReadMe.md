@@ -398,5 +398,83 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     }
 }
 ```
-   
+
+## 7. ExceptionTranslationFilter 
+
+### AuthenticationException
+ + 인증 예외처리 
+   + 로그인 페이지 이동, 401 오류코드 전달
+ + 인증 예외가 발생하기 전의 요청정보를 저장 
+   + RequestCache 사용자의 이전 요청 정보를 세션에 저장하고 이를 꺼내 오는 매커니즘 
+     + SavedRequest 사용자가 요청했던 request 파라미터 값들 , 그 당시의 헤더 값들 등이 저장 
+### AccessDeniedException
+ + 인가 예외 처리 
+   + AccessDeniedHandler 에서 예외 처리하도록 제공 
+
+
+### flow
+1. 사용자가 `request(/user)`를 요청
+2. FilterSecurityInterceptor 
+   + 인증 된 사용자가 아닌 경우 `AuthenticationException` 을 발생 
+      + `AuthenticationEntryPoint` 에서 로그인 페이지로 이동 
+      + 사용자의 요청관 정보를 저장 
+        + `HttpSessionRequestCache` 에서 관리 
+        + Session에 담긴 DefaultSavedRequest 객체 정보 `HttpSessionRequestCache`가 관리한다.
+   + 인증은 되었지만 인가 정보가 다른 경우 
+     + `AccessDeniedException` 발생 
+       + AccessDeniedHandler 클래스를 호출해서 `response.redirect("인가 처리페이지")`로 보낸다.
+
+### 설정방법 
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .exceptionHandling()
+                .authenticationEntryPoint("인증 실패시 처리")
+                .accessDeniedHandler("인가 실패시 처리")
+        
+                .formlogin()
+                .successHandler((request, response, authentication) -> {
+                    // 세션에 담겨진 요청했던 주소로 이동 시킴
+                    RequestCache requestCache = new HttpSessionRequestCache();
+                    SavedRequest savedRequest = requestCache.getRequest(request, response);
+                    response.sendRedirect(savedRequest.getRedirectUrl());
+                })
+        ;
+    }
+}
+```
+
+## 8.RequestCacheAwareFilter
++ 미리 저장된 캐싱된 데이터를 담고 활용할 수 있도록 하는 필터 
+1. 사용자가 인증 없이 요청하는경우 `NULL`인 상태
+2. 이후 `ExceptionTranslateFilter`에서 예외처리를 담당하면서 이전에 유저가 요청한 정보 `HttpSessionRequestCache` 에서 관리하게 된다.
+3. 이후 사용자가 다시 요청을 시도하는 경우 `RequestCacheAwareFilter`는 더 이상 NULL이 아니며 이전에 요청한 사용자의 정보를 가지고서 다음 필터에게
+4. 해당 정보를 넘겨주게된다.
+### 설정정보 
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .formlogin()
+                .successHandler((request, response, authentication) -> {
+                    // 세션에 담겨진 요청했던 주소로 이동 시킴
+                    RequestCache requestCache = new HttpSessionRequestCache();
+                    // 사용자가 인증 받기전에 요청했던 정보를 가지고있는 객체 
+                    SavedRequest savedRequest = requestCache.getRequest(request, response);
+                    response.sendRedirect(savedRequest.getRedirectUrl());
+                })
+        ;
+    }
+}
+```
 

@@ -10,6 +10,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
+import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 
 import javax.servlet.http.HttpSession;
 
@@ -48,8 +51,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .passwordParameter("passwd")
                 .loginProcessingUrl("/login-proc")
                 .successHandler((request, response, authentication) -> {
-                    System.out.println("authentication: " + authentication.getName());
-                    response.sendRedirect("/");
+                    RequestCache requestCache = new HttpSessionRequestCache();
+                    SavedRequest savedRequest = requestCache.getRequest(request, response);
+                    response.sendRedirect(savedRequest.getRedirectUrl());
                 })
                 .failureHandler((request, response, exception) -> {
                     System.out.println("exception" + exception.getMessage());
