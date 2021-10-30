@@ -488,4 +488,63 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 + 모든 요청에 래덤하게 생성된 토큰을 HTTP 파라미터로 요구 
 + 요청시 전달되는 토큰값과 서버에 저장된 실제 값과 비교한 후 만약 일치하지 않으면 요청은 실패한다.
   + HTTP  메소드 `PATCH,POST,PUT,DELETE`로 요청하는 경우 `토큰`값과 `토큰파라미터이름`을 가지고서 요청해야합니다.
-+ 
+
+
+# 스프링 시큐리티 주요 아키텍처
+
+## DelegatingProxyChain
+
+1. Servlet Filter 스프링의 Bean을 사용할 수 없다. 
+2. `DelegatingFilterProxy`를 이용하여 `Servlet Filter` 에서 `Spring Bean` 사용이 가능하게 한다.
+   + `springSecurityFilterChain` 이름으로 생성된 빈을 `ApplicationContext` 에서 찾아 요청을 위임할 수 있게된다.
+
+## FilterChainProxy
++ 지금 까지 나열된 Filter 관리 
++ `DelegatingFilterProxy`으로 부터 요청을 위임받는 `FilterChainProxy` 실제 보안 처리 
++ `springSecurityFilterChain`의 이름으로 생성되는 필터 빈 
++ 스프링 시큐리티 초기화 시 생성되는 필터들을 관리하고 제어 
+  + 스프링 시큐리티가 기본적으로 생성하는 필터 
+  + 설정 클래스에서 API 추가 시 생성되는 필터 
++ 사용자의 요청을 필터 순서대로 호출하여 전달 
++ 사용자 정의 필터를 생성해서 기존의 필터 전,후로 추가 가능 
+  + 필터의 순서 정의 
++ 마지막 필터까지 인증 및 인가 예외가 발생하지 않으면 보안 통과
+
+## flow 
+1. 사용자가 요청
+2. `Servlet Container` 에서 `DelegatinFilterProxy` 필터가 `SpringContainer`의 `SpringSecurityFilterChain` 에게 위임을 요청하게 된다.
+```xml
+<filter>
+    <filter-name>springSecurityFilterChain</filter-name>
+    <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+</filter>
+
+<filter-mapping>
+  <filter-name>springSecurityFilterChain</filter-name>
+  <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
+3. `springSecurityFilterChain` 이 가지고 있는 bean `FilterChainProxy` 이다.
+
+## 과정을 확인해보자
+1. Sprin 시작
+2. `SecurityFilterAutoConfiguration` 에서 `DelegatingFilterProxy` bean을 등록한다.
+```java
+public class SecurityFilterAutoConfiguration {
+    @Bean
+    @ConditionalOnBean(name = DEFAULT_FILTER_NAME)
+    public DelegatingFilterProxyRegistrationBean securityFilterChainRegistration(
+            SecurityProperties securityProperties) {
+        // bean 등록
+        DelegatingFilterProxyRegistrationBean registration = new DelegatingFilterProxyRegistrationBean(
+                DEFAULT_FILTER_NAME);
+        registration.setOrder(securityProperties.getFilter().getOrder());
+        registration.setDispatcherTypes(getDispatcherTypes(securityProperties));
+        return registration;
+    }
+}
+```
+3. `WebSecurityConfiguration`에서 `DEFAULT_FILTER_NAME`으로 bean 을생성하는데 실제 bean은 `WebSeuciry.performBuild()`에서 FilterChainProxy 빈을 생성한다.
+
+4. 실제 사용자가 요청 
+5. `DelegatingFilterProxy` 에서 webApplicationContext를 통해 해당되 `DEFAULT_FILTER_NAME`의 빈을 찾아서 해당 bean 담겨진 무수한 filter들을 처리하게 된다.
