@@ -492,7 +492,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 # 스프링 시큐리티 주요 아키텍처
 
-## DelegatingProxyChain
+## 1. DelegatingProxyChain
 
 1. Servlet Filter 스프링의 Bean을 사용할 수 없다. 
 2. `DelegatingFilterProxy`를 이용하여 `Servlet Filter` 에서 `Spring Bean` 사용이 가능하게 한다.
@@ -548,3 +548,80 @@ public class SecurityFilterAutoConfiguration {
 
 4. 실제 사용자가 요청 
 5. `DelegatingFilterProxy` 에서 webApplicationContext를 통해 해당되 `DEFAULT_FILTER_NAME`의 빈을 찾아서 해당 bean 담겨진 무수한 filter들을 처리하게 된다.
+
+## 2. 필터 초기화와 다중 설정 클래스
+
++ 설정클래스 별로 보안 기능이 각각 작동 
++ 설정 클래스 별로 RequestMatcher 설정 
+  ```java
+    http.antMatcher("/admin/**")
+    ```
++ 설정 클래스 별로 필터가 생성 
++ 각각의 설정들은 `Filter` 정보,`RequestMacher` 정보를 가지는 `SecurityFilterChain` 클래스를 생성하게 됩니다.
++ 여러개의 `SecurityFilterChain`은  `FilterChainProxy`가 `SecurityFilterChains`으로 각각의 chain 정보를 가지게 됩니다.
+
+![2-2-1.png](src/main/resources/img/2-2-1.png)
+
+![img.png](src/main/resources/img/2-2-2.png)
+
+```java
+public class FilterChainProxy {
+    private List<Filter> getFilters(HttpServletRequest request) {
+            int count = 0;
+            for (SecurityFilterChain chain : this.filterChains) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace(LogMessage.format("Trying to match request against %s (%d/%d)", chain, ++count,
+                            this.filterChains.size()));
+                }
+                // 각각의 필터정보들증 matches와 동일한 설정정보를 가진 필터 정보를 가져와서 필터를 처리하게 됩니다.
+                if (chain.matches(request)) {
+                    return chain.getFilters();
+                }
+            }
+            return null;
+        }
+}
+``` 
+
+## 오류
++ 두개를 설정하는 경우 순서를 달리해야한다는 exception 발생    
+  + @Order on WebSecurityConfigurers must be unique. Order of 100 was already
++ 설정시에 anyRequest로 전체 범위를 먼저 설정하는 경우 
+
+## 설정방법
++ 위 설정 방법은 `.antMatcher("/admin/**")` 특정 URL 을 기준으로 설정을 처리했으며 
++ 아래 설정은은 모든 인증 방식에 대해서 permitAll처리했다.
++ **다중설정을 할 경우에는 더 넓은 범위의 패턴을 뒤로 둬야한다.**   
+그 이유는 설정의 순서에 따라 탐색을 하게 되는데 더 넓은 범위를 먼저 체크하게 된다면 더 좁은 범위의 설정 부분을 체크하지 못하고 인증 없이 다른 사용자가 접근이 가능하게 되는 것이다. 
+```java
+@Configuration
+@EnableWebSecurity
+@Order(0)
+public class AdminSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .antMatcher("/admin/**")
+                .authroizeRequest()
+                .anyRequest().authenticated()
+                .and()
+                .formLogin();
+        ;
+    }
+}
+
+@Configuration
+@Order(1)
+public class DefaultSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .authroizeRequest()
+                .anyRequest().permitAll()
+                .and()
+                .formLogin();
+    }
+}
+```
