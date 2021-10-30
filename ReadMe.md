@@ -626,4 +626,53 @@ public class DefaultSecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
+## 3. Authentication (인증주체)
+
++ 요청하는자가 누구인지 증명
+  + 사용자의 인증정보를 저장하는 토큰 개념 
+  + 인증시 id와 password를 담고 인증 검증을 위해 전달되어 사용된다. 
+  + `인증 후` 최종 인증결과(user 객체, 권한정보)를 담고 SecurityContext에 저장되어 전역적으로 참조가 가능합니다.
+  ```java
+    Authentication authentication = SecurityContextHolder.getContext().getAutentication();
+    ```
+### 구조
+|용어|용도|
+|:---:|:---:|
+|principal|사용자 아이디 혹은 User객체를 저장|
+|credentials|사용자 비밀번호|
+|authorities| 인증된 사용자의 권한 목록|
+|details| 인증부가정보|
+|Authenticated|인증여부|
+
+### flow 
+
+![img.png](src/main/resources/img/2-3-1.png)
+1. 사용자가 로그인/패스워드 를 요청
+2. `UsernamePasswordAuthenticationFilter` 인증 필터가 요청정보받아서 `Authentication` 를 생성합니다.
+3. `Authentication`은 요청정보를 저장 
+4. `AuthenticationManager`가 인증을 성공하면 `Authentication` 객체를 생성 (최종정보)
+```java
+	@Override
+	public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+			throws AuthenticationException {
+		if (this.postOnly && !request.getMethod().equals("POST")) {
+			throw new AuthenticationServiceException("Authentication method not supported: " + request.getMethod());
+		}
+		String username = obtainUsername(request);
+		username = (username != null) ? username : "";
+		username = username.trim();
+		String password = obtainPassword(request);
+		password = (password != null) ? password : "";
+		UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(username, password);
+		// Allow subclasses to set the "details" property
+		setDetails(request, authRequest);
+		// Manager에게 전달
+		return this.getAuthenticationManager().authenticate(authRequest);
+	}
+```
+5. `SecurityContextHolder` 관리하는 `SecurityContext` 객체 안에 `Authentication` 저장
+
+### abstractSecurityInterceptor 
++ 인가 처리를 하는 필터의 부모 클래스
+
 
