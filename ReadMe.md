@@ -676,3 +676,82 @@ public class DefaultSecurityConfig extends WebSecurityConfigurerAdapter {
 + 인가 처리를 하는 필터의 부모 클래스
 
 
+## 인증저장소 SecurityContextHolder, SecurityContext
+
+### SecurityContext
++ `Authentication` 객체가 저장되는 보관소(`User 정보는 Authentication객체에 저장`)로 필요시 **언제든지** `Authentication` 객체를 꺼내어 쓸 수 있도록 제공되는 클래스 
++ `ThreadLocal` 에 `SecurityContext`가 저장되어 아무 곳에서나 참조가 가능하도록 설계함 
+  + Thread 마다 고유한 저장소를 가지는 공간
+  + 다른 스레드와 공유되지 않는다.
++ 인증이 완료되면 `HttpSession`에 저장되어 어플리케이션 전반에 걸쳐 전역적인 참조가 가능하다.
+  + 저장하는 `Filter`:  `SecurityContextPersistenceFilter`
+
+#### 구조 
++ `SecurityContextImpl` 가 구현되어있음 
+
+### SecurityContextHolder
++ `SecurityContext` 를 감싸고 있다. 
+  + `MODE_THREADLOCAL` : 스레드당 ScurityContext 객체를 할당 (기본값)
+  + `MODE_INHERITABLEHREADLOCAL` : 메인 스레드와 자식 스레드에 관하여 동일한 Security Context 유지
+    + `Process`가 동작하면 하나의 main `Thread`가 생성된다. 
+      + 기능 안에서 별도의 `Thread`를 생성하게된다. 
+      + `MainTrehad`와 `자식Thread`와 공유가 되지 않기 때문에 이와같은 설정으로 사용할 수 있다. 
+  + `MODE_GLOBAL` : 응용 프로그램에서 단 하나의 SecurityContext 저장 
+    + `ThreadLocal` 방식이 아닌 `static`에 저장하는 방식 
++ `SecurityContextHolder.clearContext` : SecurityContext 기존정보 초기화
+
+```java
+@GetMapping("/thread")
+   public String thread() {
+   new Thread(() -> {
+   Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+   });
+   return "thread";
+}
+```
+
+
+#### 구조 
++ `ThreadLocalSecurityContextHolderStrategy`를 사용
+  + `TheradLocal`를 조회,저장,삭제
+
+### flow 
+
+![2-4-1.png](src/main/resources/img/2-4-1.png)
+
+1. 사용자가 로그인요청 
+   1. `서버` 하나의 Thread 생성 `ThreadLocal`
+      + 인증 처리를 진행 
+        + `Authentication` 사용자의 정보를 저장 
+        + 실패
+        + 성공 
+          + `Authentication` 정보를 `SecurityContext` 저장
+          + `SecurityContextHolder`를 `SecurityContext` 저장  (SecurityContext는 `ThreadLocal`안에 저장되어짐)
+            + HttpSession에 최종적으로 `SPRING_SECURITY_CONTEXT` 이름으로 저장 
+```java
+   @GetMapping("/")
+   public String index(HttpSession session) {
+       Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+       SecurityContext authentication2 = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+       Authentication authentication1 = authentication2.getAuthentication();
+       return "home";
+   }
+```
+
+### 질문 
++ SecurityContext 저장방식에서 실무적활용 
+  + MODE_CONTEXT는 어디에서 활용될까요 ? 
+    + 웹 처럼 다중 스레드 방식이 아닌 독립형 어플리케이션에서 단일 스레드로 동작하는 인증 기능을 구현할 때 사용
+  + MODE_INHERITABLETHREADLOCAL 는 언제사용할까요?
+    필요에 의해서 비동기 방식으로 서버단에서 뭔가를 처리 할 경우 필연적으로 새로운 스레드를 생성해서 태스크를 처리하게 되는데    
+    이때 현재 인증된 사용자의 정보를 비동기 처리에서 참조하고자 할 경우에 사용할 수 있습니다
+  + 기본 설정이 strategyName = MODE_THREADLOCAL이지만 자식 스레드에서 HttpSession을 통해서 가져오는 경우 문제가 없는가? 
+    + HttpServletRequest 객체 혹은 HttpSession 객체를 참조해서 사용하고자 하는 장소에서   
+    + 파라미터를 계속 전달하거나 아니면 어디에서든 참조 가능하도록 별도의 맵에 저장해서 관리하는 등의 추가 로직이 필요
+    + SecurityContextHolder.getContext().getAuthentication() 방식은 ThreadLocal 를 통해 어디에서든지 참조가 가능하기 때문에 편리한 이점이 있습니다.
+    + 그리고 실제로 SecurityContextPersistenceFilter 도 SecurityContext 를 session.getAttribute() 해서 얻은 다음 SecurityContextHolder 에 담고 있기 때문에 
+    + 우리가 직접 자식스레드 내에서 세션에 저장된 SecurityContext 를 꺼내어 authentication 정보를 참조하는 것이 가능합니다.
+```java
+SecurityContext authentication2 = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+Authentication authentication1 = authentication2.getAuthentication();
+```
