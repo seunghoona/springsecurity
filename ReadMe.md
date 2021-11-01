@@ -825,3 +825,21 @@ protected void saveContext(SecurityContext context) {
    + 다음 필터 진행
    
 ![img.png](src/main/resources/img/2-5-2.png)
+
+## 6. Authentication
+
+![img.png](src/main/resources/img/2-6-1.png)
+
+1. 사용자가 로그인 요청
+2. `UsernamePasswordAuthenticationFilter`
+   1. Autthntication(id+ password) 인증 처리 요청 
+3. 요청을 받은 `AuthenticationManager` 
+   1. 인증에 전반된 관리자
+   2. 실제 인증을 처리하지 않고 `AuthenticationProvider` 위임 
+4. `AuthenticationProvider`
+   1. `loadUserByUserName`
+      1. 실제 인증처리 역할
+      2. 유저 유효성 검증 (패스워크 체크)
+5. userDetailsService (인터페이스)
+   1. 유저 객체조회 
+   2. `userDetails` 타입으로 반환 
