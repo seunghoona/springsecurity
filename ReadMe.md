@@ -63,8 +63,9 @@ SecurityConfig에서도 **loginProcessingUrl** 도 '/'를 반드시 붙여만 �
 
 ### Login Form 인증  Flow
 1. UserNamePasswordAuthenticationFilter가 최초로 유저의 요청정보를 가지고 매칭되는지 요청
+
 ```java
-public abstract class AbstractAuthenticationProcessingFilter {
+ abstract class AbstractAuthenticationProcessingFilter {
     private void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         // AntPathRequestMatcher login으로 요청인지 확인
@@ -85,12 +86,10 @@ public abstract class AbstractAuthenticationProcessingFilter {
                 chain.doFilter(request, response);
             }
             successfulAuthentication(request, response, chain, authenticationResult);
-        }
-        catch (InternalAuthenticationServiceException failed) {
+        } catch (InternalAuthenticationServiceException failed) {
             this.logger.error("An internal error occurred while trying to authenticate the user.", failed);
             unsuccessfulAuthentication(request, response, failed);
-        }
-        catch (AuthenticationException ex) {
+        } catch (AuthenticationException ex) {
             // Authentication failed
             unsuccessfulAuthentication(request, response, ex);
         }
@@ -755,3 +754,74 @@ public class DefaultSecurityConfig extends WebSecurityConfigurerAdapter {
 SecurityContext authentication2 = (SecurityContext) session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
 Authentication authentication1 = authentication2.getAuthentication();
 ```
+
+## 4. SecurityContextPersistenceFilter
++ SecurityContext 객체의 생성, 저장, 조회
+
+### 익명 사용자
++ 인증하지 않고 접근하는 사용자 
++ `AnonymousAuthenticationFilter` 에서 `AnonymousAuthenticationToken` 객체를 `SecurityContext` 저장
++ 새로운 `SecurityContext` 객체를 생성하여 `SecurityContextHolder` 저장 
+
+### 인증시 
++ `UsernamePasswordAuthenticationFilter`(form인증필터)에서 인증 성공 후 `SecurityContext`에 `UsernamePasswordAuthenticationToken` 객체를 `SeucirtyContext`에 저장 
++ 새로운 `SecurityContext` 객체를 생성하여 `SecurityContext` 저장 
++ 인증 최종 완료되면 `Session`에 `SecurityContext`를 저장 
+
+### 인증 후
+> **`Session` 에서 `SecurityContext` 꺼내어 `SecurityContextHolder` 저장** 
++ `SecurityContext` 안에 `Authentication` 객체가 존재하면 계속 인증을 유지 
+
+## 최종 응답시 공통
++ 매 요청마다 `SecurityContextHodler` 안에 `SecurityContext`를 저장하기 때문에 아래와 같은 로직을 계속 수행한다.
++ SecurityContextHolder.clearContext();
+  + `ThreadLocal`에 있는 `SecurityContext를` 제거합니다.
+  + 아래 코드를 보면 `SecurityContext`를 Threadlocal에 저장하는 것을 알 수 있습니다.
+```java
+final class ThreadLocalSecurityContextHolderStrategy implements  SecurityContextHolderStrategy {
+
+private static final ThreadLocal<SecurityContext> contextHolder = new ThreadLocal<>();
+
+// ThreadLocal 에서 SecurityContext 제거
+public void clearContext() {
+contextHolder.remove();
+}
+```
+
++ `SecurityContextPersistenceFilter` 가 하는 주된 역할은 사용자가 인증을 시도하게 되면 처음에 `Authentication` 이 null  상태인 `SecurityContext` 객체를 SecurityContextHolder 에 담아서 다음 필터로 전달하는 것입니다. 
++ 그리고 인증을 처리하는 필터인 `UsernamePasswordAuthenticationFilter` 에서 인증에 성공
++ SecurityContextHolder 에 있는 SecurityContext 객체를 꺼내어 Authentication 객체를 저장하게 됩니다.
++ 응답하는 시점에 `SecurityContextPersistenceFilter` 의 `finally` 구문을 거치게 되는데 이때 `SecurityContextHolder.clearContext()` 를 하게 됩니다
+```java
+@Override
+protected void saveContext(SecurityContext context) {
+    // 세션에 `SecurityContext` 저장
+}
+```
+
+
+
+
+## flow 
+![img.png](src/main/resources/img/2-5-1.png)
+1. 사용자가 요청 
+2. SecurityContextPersistenceFiler
+   + 매 요청마다 (인증전, 인증후, 익명사용자)
+   + HttpSecurityContextRepository
+     + SeurityContext 를 생성하고 조회하는 클래스 
+3. 인증 전 (익명사용자도 포함)
+   + SecurityContextHolder (새로운 컨텍스트 생성)
+     + Authentication은 null이다.
+   + AuthFilter 
+     + usernameAuthenticationFilter 인증 
+   + 인증 후 인증 객체 생성 
+     + `SeurityContext`의 결과`Authentication`를 정보를 저장 
+   + 다음 필터로 이동 
+   + `Session` 에 `SecurityContext`를 `SecurityContextpersistenceFilter`
+   + SecurityContextHolder.clearContext();
+   + 응답 
+4. 인증 후 
+   + session 에서 SecurityContext 정보를 `SecurityContextHolder` 
+   + 다음 필터 진행
+   
+![img.png](src/main/resources/img/2-5-2.png)
