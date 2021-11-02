@@ -825,10 +825,10 @@ protected void saveContext(SecurityContext context) {
    + 다음 필터 진행
    
 ![img.png](src/main/resources/img/2-5-2.png)
-
+![img.png](src/main/resources/img/2-6-1.png)
 ## 6. Authentication
 
-![img.png](src/main/resources/img/2-6-1.png)
+![img.png](src/main/resources/img/2-6-2.png)
 
 1. 사용자가 로그인 요청
 2. `UsernamePasswordAuthenticationFilter`
@@ -843,3 +843,4 @@ protected void saveContext(SecurityContext context) {
 5. userDetailsService (인터페이스)
    1. 유저 객체조회 
    2. `userDetails` 타입으로 반환 
+6. `Authentication`과 데이터를 저장해서 리턴 `Authentication`을 `SecurityContext` 에 저장
