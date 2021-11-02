@@ -867,3 +867,24 @@ protected void saveContext(SecurityContext context) {
          ```java
             private AuthenticationManager parent;
          ```
+
+## 8. AuthenticationProvider 
+![img.png](src/main/resources/img/2-8-1.png)
++ 실제적인 사용자의 데이터 검증
+
+1. AuthenticationProvider(인터페이스)
+   1. authenticate(authentication) // 인증처리 검증
+      + ID 검증 
+        + UserDetailsService 
+          + data로부터 실제 사용자의 계정이 존재하는지 조회
+            + 존재하지 않다면 `UserNotFoundException`
+      + PASSWORD 검증
+        + UserDetails 받은정보와 `authentication`으로 부터 받은 정보와 함께 비교 
+          + 비밀번호가 동일하지 않다면 `BadCredentialException`
+      + 추가검증까지 정리하게되면 
+   2. `AUthentication` 인증된 정보를 `AuthenticationManager` 로전달
+   3. `AuthenticationManager`로부터 받은 정보를 전달했던 `UsernamePasswordAuthenticationFilter`로 전달
+   4. `SecurituContext`에 저장하고 `session`에 저장하는 방식으로 진행됩니다.
+  1. supports(authentication) //현재 `form 인증`, `rememberme` 인증을 하수 있는지 검사
+      
+   
