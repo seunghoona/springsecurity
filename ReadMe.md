@@ -844,3 +844,26 @@ protected void saveContext(SecurityContext context) {
    1. 유저 객체조회 
    2. `userDetails` 타입으로 반환 
 6. `Authentication`과 데이터를 저장해서 리턴 `Authentication`을 `SecurityContext` 에 저장
+
+## 7. AuthenticationManager
+1. 
+2. `AuthenticationManager` 인터페이스를 구현한 `ProviderManager`  입니다.
+3. AuthenticationProvider  목록 중에서 인증처리 요건에 맞는 AuthenticationProvider를 찾아 인증 처리를 한다.
+4. `ProviderManager`는 초기화 시점에 여러개의 `AuthenticationProvider`를 가지고 있습니다.
+
+![2-7-1.png](src/main/resources/img/2-7-1.png)
+
+1. 실제 사용자 로그인요청 
+   1. 여러방식의 인증방식이 있다.
+      1. Form인증
+      2. RememberMe 인증
+         1. usernameAuthenticationFilter
+         2. RememberMeAuthenticationFilter
+            1. `Authentication` 객체를 `AuthenticationManager`에게 전달합니다.
+            2. `ProviderManager`에서 처리하는 것이 아닌 다른 `AuthenticationProvider`를 이용하여 검증을 진행합니다.
+      3. Oauth 인증
+         1. `providerManager`에게 `Oauth`를 인증한 `provider`를 찾습니다.
+         2. 자신이 가진 `provider`에서 존재하지 않는다면 `ProviderManager` `parent` 를 구현한 클래스에서 확인해서 인증을 처리합니다.
+         ```java
+            private AuthenticationManager parent;
+         ```
