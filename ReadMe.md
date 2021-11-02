@@ -886,5 +886,59 @@ protected void saveContext(SecurityContext context) {
    3. `AuthenticationManager`로부터 받은 정보를 전달했던 `UsernamePasswordAuthenticationFilter`로 전달
    4. `SecurituContext`에 저장하고 `session`에 저장하는 방식으로 진행됩니다.
   1. supports(authentication) //현재 `form 인증`, `rememberme` 인증을 하수 있는지 검사
-      
-   
+  
+## 9. Authorization
++ 당신에게 무엇이 허가 되었는지 증명하는 것.
+![img.png](src/main/resources/2-9-1.png)
+
+1. 인증을 사용한 사용자가 그 자원에 접근할 수 있는 자격이 있는지 확인하는 거라고 볼 수 있습니다.
+
+![img.png](src/main/resources/2-9-2.png)
+
+
+## 9.FilterSecurityInterceptor
++ 마지막에 위치한 필터로써 인증도니 사용자에 대하여 특정 요청의 승인/거부 여부를 최종적으로 결정 
++ 인증 객체 없이 보호자원에 접근을 시도할 경우 `AuthenctionException`을 발생 
++ 인증 후 자원에 접근 가능한 권한이 존재하지 않을 경우 `AccessDeniedException`을 발생 
++ 권한 제어 방식중 HTTP 자원의 보안을 처리하는 필터 
++ 권한 처리를 `AccessDecisionManager`에게 맡김
+
+![img_1.png](src/main/resources/2-9-3.png)
+
+1. 사용자가 요청
+2. `AbstractSecurityInterceptor`를 상속한 `FilterSecurityInterceptor`가 인증여부 체크 
+```java
+
+public class FilterSecurityInterceptor extends AbstractSecurityInterceptor {
+    //부모 클래스를 호출 
+    InterceptorStatusToken token = super.beforeInvocation(filterInvocation);
+}
+
+
+public abstract class AbstractSecurityInterceptor {
+	protected InterceptorStatusToken beforeInvocation(Object object){
+        // 자원의 설정된 `권한정보`를 가져옴 hasRole permitALl을 말함
+        Collection<ConfigAttribute> attributes=this.obtainSecurityMetadataSource().getAttributes(object);
+
+        // 인증된 사용자인지 확인 부분 
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+        }
+        // `AccessDecisionManger`
+        attemptAuthorization(object, attributes, authenticated);
+    }
+}
+```
+   1. 인증 안 된경우
+      1. AuthenctionException을 발생 
+      2. ExceptionTranslationFilter 로 리턴 
+   2. 인증 된경우 
+      1. `SecurityMetadataSource` **(인가에 대한 처리)**
+         + 사용자가 요청한 자원에 필요한 권한 정보 조회해서 전달 
+           1. 사용자가 요청한 자원에 권한 자체가 없다면 심사하지 않음
+           2. 권한정보가 존재한다면 `AccessDecisionManager`에게 최종 심의 요청
+      2. `AccessDecisionManger`
+         + 심의요청을 `AccessDecisionVoter` 확인 
+         + 심의된 승인/거부 값을 `AccessDecisionManger` 정보를 받게된다.
+         + 받게된 정보를 가지고서 승인과 거부에 따라 로직을 처리하게 된다.
+           1. 접근 승인이 안된다면 `AccessDeniedException`
+           2. 승인되면 `자원접근`
