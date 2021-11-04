@@ -942,3 +942,43 @@ public abstract class AbstractSecurityInterceptor {
          + 받게된 정보를 가지고서 승인과 거부에 따라 로직을 처리하게 된다.
            1. 접근 승인이 안된다면 `AccessDeniedException`
            2. 승인되면 `자원접근`
+
+## 10.AccessDecisionManager
+1. `인증정보, 요청정보, 권한정보`를 이요해서 사용자의 자원접근을 허용할 것인지 거부할 것이지 최종 결정하는 주체 
+2. 여러개의 Voter들을 가질 수 있으면 Voter로 부터 `접근허용, 거부, 보류`에 해당하는 각각의 값을 리턴받고 판단 및 결정
+3. 최종 접근 거부시 예외 발생 
+
+### 접근결정의 세가지 구현체 
+1. `AffirmativeBased`
+   + 여러개의 Voter 클래스 중 하나라도 접근 허가로 결론을 내면 접근 허가로 판단한다.
+2. `ConsensusBased`
+   + 다수표(숭인 및 거부)에 의해 최종 결정을 판단한다.
+   + 동수일경우 기본은 접근 허가이거나 `allowIfEqualsGrantedDeniedDecisions`을 false로 설정할 경우 거부로 결정된다.
+3. `UnanimousBased`
+   + `모든 보터`가 만장일치로 접근을 승인해야하며 그렇지 않은경우 접근 거부
+
+
+## 10.AccessDecisionVoter 
+
++ `판단을 심사`하는 것(위원)
++ Voter 가 권한 부여 과정에서 판단하는 자료
+  + Authentication - 인증 정보(user)
+  + FilterInvocation – 요청 정보 (antMatcher("/user"))
+  + ConfigAttributes - 권한 정보 (hasRole("USER"))
+
++ 결정 방식 
+  + ACCESS_GRANTED : 접근허용(1)
+  + ACCESS_DENIED : 접근 거부(-1)
+  + ACCESS_ABSTAIN : 접근 보류(0)
+    + Voter 가 해당 타입의 요청에 대해 결정을 내릴 수 없는 경우
+
+
+![img.png](src/main/resources/AffirmativeBased.png)
+
+1.`FitlerSecurityInterceptor`가 `AccessDesisionManager`에게 인가처리를 위임
+2. `AccessDesisionManager` 가 (`Authentication(인증정보),FilterInvocation(요청정보),configAttributes(권한정보)`)를 `AccessDecisionVoter`에게 권한 판단심사요청
+3. Voter 가 결정방식에 따라 `AccessDecusionManage`에게 돌려줍니다.
+   접근 허용인 경우
+   FitlerSecurityInterceptor에게 전달
+   접근 불가인 경우
+   ExceptionTranslationFitler에게 전달
