@@ -982,3 +982,86 @@ public abstract class AbstractSecurityInterceptor {
    FitlerSecurityInterceptor에게 전달
    접근 불가인 경우
    ExceptionTranslationFitler에게 전달
+
+
+
+# 최종정리 
+
+![img.png](src/main/resources/img.png)
+0. 시큐리티가 초기화 될때 일어나는 정보
+   1. SecurityConfig `WebSecurityConfigurerAdapter`를 통해서 세롭게 설정해줄 수 있습니다.
+   2. `Filter`를 생성하게 되고 Filter가 직접적인 설정을 처리하게됩니다.
+   3. `WebSecurity` 로 각각의 설정된 filter 정보를 담게 됩니다. 
+   4. `FilterChainProxy` 생성될 떄 `WebSecurity`의 `filter` 정보를 `생성자`로 주입받습니다.
+   5. `filterChainProxy`는 `springSecurityFilterChain`이름으로 `bean` 등록되게 됩니다.
+   6. `DelegatingFilterProxy(ServletFilter)` 초기화 시점에 `springSecurityFilterChain`이름의  bean인 `filterChainProxy` 를 찾습니다.
+1. 유저가 인증을 시도하는 경우 
+   1. 사용자가 인증을 요청 
+   2. `DelegatingFilterProxy`가 요청을 받고 `filterChainProxy`에게 위임 합니다.
+   3. `SecurityContextPersistenceFilter` 사용자의 요청을 받음
+      1. `httpSessionSecurityContextRepository` 클래스 가지고 있습니다.
+         1. `SecurityContext`를 생성 및 저장 , 조회하고 참조하는 역할 
+      2. `loadContext` (`Session`에 저장된 이력이 있는지 체크)
+         1. 최초의 인증이기 때문 Session에 정보가 없습니다.
+         2. 정보가 없기 때문에 `CreateSecurityContext` 새로운 `SecurityContext`를 생성합니다.
+   4. `LogoutFilter`
+      1. 인증을시도하고 있는 중이기에 그냥 넘어갑니다.
+   5. `UsernamePasswordAuthenticationFilter` (form 인증처리)
+         1. `Authentication` 인증객체를 생성 
+         2. `AuthenticationManager`가 `인증처리`를 `AuthenticationProvider`에게 위임합니다.
+         3. 최종적으로 인증이 성공한경우 `SeuciryContextHolder` 안에 `SecurityContext` 를 저장하게됩니다.
+            1. `SecurityContext` 안에는 `Authtication`이 담겨있는데 `ThreadLocal`에 담겨 저장되게 됩니다.
+            2. !중요 SecurityContext는 이전단계인 `SecurityContextPersistenceFilter`에서 생성한 `SecurityContext`에 저장하게 됩니다.
+   6. 위와 같은 인증이 일어나는 시점에 `SessionManagementFilter`에서 사용자가 이전 로그인을 인증한시도가 있었는지 체크를 진행하게 됩니다.
+      1. `ConcurrentSession`
+         1. `SessionAuthenticationException` //현재 사용자 인증시도 시도 차단
+         2. `session.expireNow` // 이전 사용자 세션 만료 설정
+      2. `sessionFixation`
+         1. 새로운 세션 생성과 함께 새로운 쿠키를 발급하게 됩니다.
+      3. `RegisterSessionInfo`를통해 사용자 세션정보가 등록됩니다.
+   7. 이후 로그인이 성공하는 경우 
+    `SecurityContextPersistenceFilter` 응답전에 `HttpSession`에 저장하게 되고 현존하는 `SecurityContext`를 삭제하게 됩니다.
+   
+2. 인증 이후 자원에 접근하는 경우 
+    1. 사용자의 요청 
+    2. `DelegatingFilterProxy`가 요청을 받고 `filterChainProxy`에게 위임 합니다.
+    3. `SecurityContextPersistenceFilter` 사용자의 요청을 받음
+       1. `httpSessionSecurityContextRepository` 클래스 가지고 있습니다.
+       2. `SecurityContext`를 생성 및 저장 , 조회하고 참조하는 역할
+    4. `loadContext` (`Session`에 저장된 이력이 있는지 체크) 
+       1. `사용자 인증했던 정보가 존재 session에서 정보를 꺼내옵니다.`
+       2. 해당정보를 `SecurityContextHolder`에 `저장`하게 됩니다. 생성은 하지 않습니다.
+    5. `ConcurrentSessionFilter` 까지 필터 통과 (동일한계정으로 두명이상이 들어오는경우 동작)
+    6. `RememberMeAuthenticationFIlter` 
+       1. 사용자의 세션 만료가 된 경우 `인증객체가 null`인경우 종작 
+       2. remember-me cookie 값을 저장해서 왔을 때 인증처리를 하게 됩니다.
+    7. `AnonymousAuthenticationFilter`
+        1. 사용자가 인증시도하지 않고 권한도없이 자원에 바로 접근하려하는 경우 
+    8. `SessionManagementFilter` 현재 세션에 `SecurityContext`가 없는 경우 동작
+       1. 인증에서 해당 기능과 동일한 일을하지만 별로로 filter로서 동작합니다.
+    9. `ExceptionTranslationFilter`
+       1. 예외만 처리하는 필터 
+           1. AuthenticationException
+           2. AccessDenideException
+    10. FilterSecurityInterceptor
+        1. 현재 접속한 사용자가 Authentication의 정보가 `SecurityContext` 정보가 있는 없다면 `AuthenticationException` 발생
+        2. `AccessDecisionManager`가 AccessDecisionVoter로 승인과 거부 결정을 위임시킵니다.
+           1. 만약 권한이 없는 요청이라면 `AccessDeniedException`을 발생시킵니다.
+
+3. 첫번째와 동일한 계정으로 인증을 시도하는 경우 
+    1. 사용자의 요청
+    2. `DelegatingFilterProxy`가 요청을 받고 `filterChainProxy`에게 위임 합니다.
+    3. `SecurityContextPersistenceFilter` 사용자의 요청을 받음
+        1. `httpSessionSecurityContextRepository` 클래스 가지고 있습니다.
+        2. `SecurityContext`를 생성 및 저장 , 조회하고 참조하는 역할
+    4. `loadContext` (`Session`에 저장된 이력이 있는지 체크) 
+       1. `사용자 인증했던 정보가 존재 session에서 정보를 꺼내옵니다.`
+       2. 해당정보를 `SecurityContextHolder`에 `저장`하게 됩니다. 생성은 하지 않습니다.
+    5. `ConcurrentSessionFilter`
+       1. 매요청 마다 세션이 만료되었는지 확인합니다.
+          1. session.expireNow();
+       2. ConcurrentSession에서 2가지 전략을 가지고서 확인하게 됩니다.
+          1. SessionAuthenticationException //현재 사용자의 인증시도를 차단 처리
+          2. session.expireNow // 계속 인증을 성공하지만, 이전 세션은 삭제하게 됩니다.
+             1. 루트페이지로 이동하게됩니다.
+4. 
